@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="styles.css">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans&family=Montserrat:ital,wght@0,400;0,700;1,700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    </head>
+
+    <body>
+        
+        <div class="container">
+            <div class="input-container">
+                
+                <div class="input-form">
+                    <h4>Display and edit the information by clicking a plant on the table.</h4>
+                    <label for="common">Common:</label>
+                    <input type="text" id="common">
+                    
+                    <label for="botanical">Botanical:</label>
+                    <input type="text" id="botanical">
+                    
+                    <label for="zone">Zone:</label>
+                    <input type="text" id="zone">
+
+                    <label for="light">Light:</label>
+                    <input type="text" id="light">
+
+                    <label for="price">Price:</label>
+                    <input type="text" id="price">
+
+                    <label for="availability">Availability:</label>
+                    <input type="text" id="availability">
+
+                    <br>
+
+                    <button onclick="savePlant()">Save</button>
+                </div>
+            </div>
+
+            <div class="vertical-line"></div>
+
+            <div class="table-container">
+                <h1>PLANT CATALOG</h1>
+                <label class="search" for="search">Search:</label>
+
+                <input class="searchinp" type="text" id="search" oninput="searchTable()">
+                <button class="searchbtn" onclick="resetTable()"><i class="fa fa-refresh"></i> Reset</button>
+
+                <table id="plantTable">
+                    <thead>
+                        <tr>
+                            <th>COMMON</th>
+                            <th>BOTANICAL</th>
+                            <th>ZONE</th>
+                            <th>LIGHT</th>
+                            <th>PRICE</th>
+                            <th>AVAILABILITY</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div id="pagination" class="pagination"></div>
+            </div>
+        </div>
+        <script>
+            var selectedRow = null;
+            var tableData = [];
+            var currentPage = 1;
+            var rowsPerPage = 10;
+            var originalTableData = [];
+
+            function loadXML(){
+                var xhttp = new XMLHttpRequest();
+                xhttp.onreadystatechange = function(){
+                    if (this.readyState == 4 && this.status == 200){
+                        parseXML(this);
+                        displayRows();
+                        updatePagination();
+                    }
+                };
+                xhttp.open("GET","plant_catalog.xml",true);
+                xhttp.send();
+            }
+
+            function parseXML(xml) {
+                var xmlDoc = xml.responseXML;
+                var plants = xmlDoc.getElementsByTagName("PLANT");
+
+                for (var i = 0; i < plants.length; i++) {
+                    var common = plants[i].getElementsByTagName("COMMON")[0].childNodes[0].nodeValue;
+                    var botanical = plants[i].getElementsByTagName("BOTANICAL")[0].childNodes[0].nodeValue;
+                    var zone = plants[i].getElementsByTagName("ZONE")[0].childNodes[0].nodeValue;
+                    var light = plants[i].getElementsByTagName("LIGHT")[0].childNodes[0].nodeValue;
+                    var price = plants[i].getElementsByTagName("PRICE")[0].childNodes[0].nodeValue;
+                    var availability = plants[i].getElementsByTagName("AVAILABILITY")[0].childNodes[0].nodeValue;
+
+                    tableData.push({ common, botanical, zone, light, price, availability });
+                    originalTableData.push({ common, botanical, zone, light, price, availability });
+                }
+                }
+            function searchTable() {
+                var input = document.getElementById("search").value.toLowerCase();
+                var filteredData = tableData.filter(function(row) {
+                    return Object.values(row).some(function(value) {
+                    return value.toLowerCase().includes(input);
+                    });
+                });
+
+                currentPage = 1;
+                tableData = filteredData;
+                displayRows();
+                updatePagination();
+            }
+
+            function resetTable() {
+                currentPage = 1;
+                tableData = originalTableData;
+                document.getElementById("search").value = "";
+                displayRows();
+                updatePagination();
+            }
+
+            function displayRows(){
+                var tableBody = document.getElementById("tableBody");
+                tableBody.innerHTML = "";
+
+                var startIndex = (currentPage - 1) * rowsPerPage;
+                var endIndex = startIndex + rowsPerPage;
+                var rowsToDisplay = tableData.slice(startIndex, endIndex);
+
+                for (var i = 0; i < rowsToDisplay.length; i++){
+                    var row = document.createElement("tr");
+
+                    var commonInput = document.createElement("td");
+                    commonInput.innerHTML = rowsToDisplay[i].common;
+                    commonInput.classList.add("common-data");
+                    commonInput.addEventListener("click", function(){
+                        selectRow(this);
+                    });
+
+                    row.appendChild(commonInput);
+                    row.insertCell(1).innerHTML = rowsToDisplay[i].botanical;
+                    row.insertCell(2).innerHTML = rowsToDisplay[i].zone;
+                    row.insertCell(3).innerHTML = rowsToDisplay[i].light;
+                    row.insertCell(4).innerHTML = rowsToDisplay[i].price;
+                    row.insertCell(5).innerHTML = rowsToDisplay[i].availability;
+                
+                    tableBody.appendChild(row);
+                }
+            }
+
+            function updatePagination(){
+                var pagination = document.getElementById("pagination");
+                pagination.innerHTML = "";
+
+                var totalPages = Math.ceil(tableData.length / rowsPerPage);
+
+                if(totalPages > 1){
+                    var previousButton = document.createElement("button");
+                    previousButton.innerHTML = "&laquo Previous";
+                    previousButton.addEventListener("click", previousPage);
+
+                    if (currentPage === 1){
+                        previousButton.disabled = true;
+                    }
+                    pagination.appendChild(previousButton);
+
+                    for(var i = 1; i <= totalPages; i++){
+                        var pageButton = document.createElement("button");
+                        pageButton.innerHTML = i;
+                        pageButton.addEventListener("click",function(){
+                            goToPage(parseInt(this.innerHTML));
+                        });
+                        if(i === currentPage){
+                            pageButton.disabled = true;
+                        }
+                        pagination.appendChild(pageButton);
+                    }
+
+                    var nextButton = document.createElement("button");
+                    nextButton.innerHTML = "Next &raquo";
+                    nextButton.addEventListener("click", nextPage);
+
+                    if (currentPage === totalPages){
+                        nextButton.disabled = true;
+                    }
+                    pagination.appendChild(nextButton);
+                }
+            }
+
+            function selectRow(cell) {
+                var row = cell.parentNode;
+
+                if (selectedRow) {
+                    selectedRow.classList.remove("selected");
+                    selectedRow.cells[0].classList.remove("underline");
+                }
+
+                row.classList.add("selected");
+                selectedRow = row;
+
+                var commonInput = row.cells[0];
+                commonInput.classList.add("underline");
+                var common = commonInput.innerText;
+                var botanical = row.cells[1].innerText;
+                var zone = row.cells[2].innerText;
+                var light = row.cells[3].innerText;
+                var price = row.cells[4].innerText;
+                var availability = row.cells[5].innerText;
+
+                document.getElementById("common").value = common;
+                document.getElementById("botanical").value = botanical;
+                document.getElementById("zone").value = zone;
+                document.getElementById("light").value = light;
+                document.getElementById("price").value = price;
+                document.getElementById("availability").value = availability;
+                }
+
+                function savePlant() {
+                if (selectedRow) {
+                    var common = document.getElementById("common").value;
+                    var botanical = document.getElementById("botanical").value;
+                    var zone = document.getElementById("zone").value;
+                    var light = document.getElementById("light").value;
+                    var price = document.getElementById("price").value;
+                    var availability = document.getElementById("availability").value;
+
+                    var cells = selectedRow.getElementsByTagName("td");
+
+                    cells[0].innerHTML = common;
+                    cells[1].innerHTML = botanical;
+                    cells[2].innerHTML = zone;
+                    cells[3].innerHTML = light;
+                    cells[4].innerHTML = price;
+                    cells[5].innerHTML = availability;
+
+                    document.getElementById("common").value = "";
+                    document.getElementById("botanical").value = "";
+                    document.getElementById("zone").value = "";
+                    document.getElementById("light").value = "";
+                    document.getElementById("price").value = "";
+                    document.getElementById("availability").value = "";
+
+                    selectedRow.classList.remove("selected");
+                    selectedRow.cells[0].classList.remove("underline");
+                    selectedRow = null;
+                }
+                }
+
+            function previousPage(){
+                if (currentPage > 1){
+                    currentPage--;
+                    displayRows();
+                    updatePagination();
+                }
+            }
+
+            function nextPage(){
+                var totalPages = Math.ceil(tableData.length / rowsPerPage);
+                if (currentPage < totalPages){
+                    currentPage++;
+                    displayRows();
+                    updatePagination();
+                }
+            }
+
+            function goToPage(page){
+                if(page >= 1 && page <= Math.ceil(tableData.length / rowsPerPage)){
+                    currentPage = page;
+                    displayRows();
+                    updatePagination();
+                }
+            }
+
+            loadXML();
+        </script>
+    </body>
+</html>
